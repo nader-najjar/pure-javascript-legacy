@@ -1,4 +1,4 @@
-# template-pure-javascript
+# pure-javascript-legacy
 
 JavaScript best practices.
 
@@ -128,3 +128,7 @@ Follow the instructions here: <https://nader-najjar.notion.site/Visual-Studio-Co
 * Installation: <https://nix.dev/install-nix>
 * Nix Versions: <https://status.nixos.org>
 * Nix Package Search: <https://search.nixos.org/packages>
+
+## License
+
+All rights reserved. See [LICENSE](LICENSE).

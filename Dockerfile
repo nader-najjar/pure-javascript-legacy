@@ -57,20 +57,9 @@ RUN mkdir -p /custom-software/runtime-workspace && \
 COPY executable /custom-software/runtime-workspace/executable
 
 #
-# 5. AWS Lambda runtime interface client (remove this section for container-only deployment)
-#     - The native addon is compiled during the application build on Linux/ARM64
-#     - For Lambda, uncomment this CMD and comment out the Main CMD in section 6
-#
-
-ENV LAMBDA_TASK_ROOT=/custom-software/runtime-workspace/executable
-
-# CMD ["/custom-software/runtime-workspace/executable/node_modules/aws-lambda-ric/index.mjs", "/custom-software/runtime-workspace/executable/LambdaHandler.handler"]
-
-#
-# 6. Runtime wrapper and entrypoint
+# 5. Runtime wrapper and entrypoint
 #     - Applies the flake-defined runtime dev shell environment recorded at image build time
 #     - Runs node on the script named by CMD
-#     - Keep exactly one CMD uncommented across sections 5 and 6
 #
 
 RUN printf '%s\n' \

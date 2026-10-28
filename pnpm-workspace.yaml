@@ -1,4 +1,1 @@
-# Allow AWS's install scripts to compile the Lambda runtime client's native addon on Linux.
-onlyBuiltDependencies:
-  - aws-lambda-ric
 injectWorkspacePackages: true

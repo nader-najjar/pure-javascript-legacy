@@ -79,29 +79,9 @@ JavaScript best practices.
 
 &nbsp;
 
-## 5. Lambda Support
+## 5. Output
 
-The Dockerfile defaults to `Main.js`. For Lambda, enable the `CMD` in section 5 and disable the Main `CMD` in section 6. Both entry points use the same executor. Select ARM64 in the deployment infrastructure.
-
-The AWS runtime interface client's native addon is built by pnpm on Linux using the Nix toolchain and pinned Node headers. AWS's install scripts skip native compilation on macOS; local handler tests still run there. Image packaging only copies the completed build.
-
-To remove Main support and keep only Lambda:
-
-1. Enable the Lambda `CMD` in Dockerfile section 5 and remove the Main `CMD` in section 6. Keep the runtime wrapper and `ENTRYPOINT` in section 6.
-2. Delete `src/main/Main.ts` and remove its entries from `knip.json`, `vitest.config.ts`, and `eslint.config.js`.
-3. Remove the unused `closeResources` function from `ContainerFactory.ts`, the `requestShutdown` function from `ShutdownSignalUtility.ts`, and `ShutdownSignalUtility.test.ts`. Keep the shared `shutdownSignal`, which `CalculationResultStore` still uses.
-4. Run `./universal-build build`.
-
-To remove Lambda support:
-
-1. Remove Dockerfile section 5 and its reference in section 6.
-2. Delete `src/main/LambdaHandler.ts` and `src/test/LambdaHandler.test.ts`; remove the handler entry and `ignoreDependencies` setting from `knip.json`.
-3. Run `./universal-build remove aws-lambda-ric` and `./universal-build remove -D @types/aws-lambda`.
-4. Remove `aws-lambda-ric` from `onlyBuiltDependencies` in `pnpm-workspace.yaml`; remove the setting if empty.
-5. Remove the native-build packages and `npm_config_nodedir` shell hook from `flake.nix` if no other dependency needs them.
-6. Remove `runWithLogContext`, its `AsyncLocalStorage`, and the context `mixin` from `LoggerUtility.ts` if unused elsewhere. Run `./universal-build build`.
-
-Reference: [AWS Lambda Node.js container images](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-image.html).
+The Dockerfile runs `Main.js`.
 
 &nbsp;
 

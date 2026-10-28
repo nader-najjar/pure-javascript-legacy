@@ -22,15 +22,7 @@
             packages = [
               chosenNode
               chosenPnpm
-              # AWS Lambda RIC needs these tools to compile its native addon.
-              pkgs.cmake
-              pkgs.python3
             ];
-
-            # Build the addon against the Nix-pinned Node headers instead of downloading headers.
-            shellHook = ''
-              export npm_config_nodedir=${chosenNode}
-            '';
           };
 
           # Shell for runtime-only environment.

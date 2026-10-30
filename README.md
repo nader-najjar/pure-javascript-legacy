@@ -1,114 +1,118 @@
 # pure-javascript-legacy
 
-JavaScript best practices.
+> JavaScript best practices.
 
-&nbsp;
+### 1. Prerequisites
 
-## 1. Local Development Machine Prerequisites
+---
 
-* Install Nix as per <https://nix.dev/install-nix>
-  * Nix handles all other requirements so that developer machine setup is as minimal as possible
-    * Further, it does not matter what version of Nix you have - it guarantees reproducibility
-  * If, after an Apple update, nix is not found on PATH, follow <https://github.com/NixOS/nix/issues/7880> and add the snippet to `~/.zshrc` instead
+- macOS or Linux on ARM64 or x86-64, as configured in `flake.nix`.
+- Install [Nix](https://nix.dev/install-nix); it supplies Node and pnpm.
 
-&nbsp;
+Run commands from the repository root. Install locked dependencies before individual tasks:
 
-## 2. Tips
+```sh
+./universal-build install --frozen-lockfile
+```
 
-* Run `echo "alias ub='./universal-build'" >> ~/.zshrc` then `source ~/.zshrc` to make `ub` a quick alias for `./universal-build`
-* Add the Nix snippet to your `~/.zshrc` so it is never wiped by system updates (snippet: <https://github.com/NixOS/nix/issues/7880>)
+### 2. Build and Test
 
-&nbsp;
+---
 
-## 3. Main Build Tasks
+#### Everyday Commands
 
-### `./universal-build build`
+| Goal | Command |
+| --- | --- |
+| Compile only | `./universal-build run compile` |
+| Unit tests with coverage | `./universal-build run test` |
+| Type check | `./universal-build exec tsc -p tsconfig.json` |
+| Lint | `./universal-build exec eslint --max-warnings 0 .` |
+| All static checks | `./universal-build run check` |
+| Assemble production package | `./universal-build run compile && ./universal-build run packageExecutable` |
+| Full verification and packaging | `./universal-build build` |
+| Remove build outputs and installed dependencies | `./universal-build clean` |
 
-* Installs dependencies according to the pnpm lockfile
-* Checks types, lint, dependency boundaries, and unused code/dependencies
-* Compiles TypeScript code into JavaScript
-* Runs unit tests with code coverage thresholds enforced
-* Produces a self-contained runtime under `build/release/executable`, with compiled JavaScript and production dependencies; local builds do not construct an image
+Tests run TypeScript directly and enforce 80% coverage. `check` includes types, lint, dependency boundaries, and unused code. `compile` deletes the previous compiled output and production package; `packageExecutable` requires compiled output and dependencies already in the pnpm store.
 
-### `./universal-build clean`
+Run one test file, or one named test, without the whole-project coverage gate:
 
-* Removes temporary build outputs
+```sh
+./universal-build run test src/test/samplebusinesslayer/Calculator.test.ts --coverage.enabled=false
+./universal-build run test src/test/samplebusinesslayer/Calculator.test.ts -t 'throws on division by zero' --coverage.enabled=false
+```
 
-&nbsp;
+#### Outputs
 
-## 4. Workflows
+- Compiled JavaScript: `build/compiled/`.
+- Production package: `build/release/executable/`.
+- JUnit: `build/test-results/junit.xml`.
+- Coverage: `build/coverage/index.html` and `build/coverage/lcov.info`.
 
-### Handling NPM Dependencies
+### 3. Development Workflows
 
-* NPM dependencies should never be manually edited. Always use one of these flows to add/remove/update
-  * If manual edits cause drift with the lockfile, run `./universal-build install` to regenerate the lockfile (again, this command should never have to be executed - use the below instead)
-* To add a dependency:
-  * `devDependencies`: `./universal-build add -D <package-name>`
-  * `dependencies`: `./universal-build add <package-name>`
-* To remove a dependency:
-  * `devDependencies`: `./universal-build remove -D <package-name>`
-  * `dependencies`: `./universal-build remove <package-name>`
-* To update a dependency:
-  * `devDependencies`: `./universal-build add -D <package-name>@<version>`
-  * `dependencies`: `./universal-build add <package-name>@<version>`
-* To update all dependencies to latest compatible versions:
-  * `./universal-build update --latest`
+---
 
-### Adding A Toolchain Dependency
+#### Dependency Management
 
-1) Search <https://search.nixos.org/packages> for the package name
-2) Add the appropriate package to the package list in the `flake.nix` file
-3) If the dependency is in a different channel than the current `nixpkgs` version, run the workflow for "Updating Nix `nixpkgs` Version"
+Use pnpm through the wrapper to update `package.json` and `pnpm-lock.yaml`; `-w` selects this workspace root:
 
-### Updating Nix `nixpkgs` Version
+```sh
+./universal-build add -w <package>
+./universal-build add -w -D <package>
+./universal-build add -w -E <package>@<version>
+./universal-build remove <package>
+./universal-build update <package> --latest
+```
 
-1) Modify the version of `inputs.nixpkgs.url` in the `flake.nix` file to the desired version, according to <https://status.nixos.org>
-2) Run `./universal-build --update-nix-flake-lockfile` to update the `flake.lock` lockfile
-3) Commit both files to version control
+- Refresh the lockfile: `./universal-build install --lockfile-only`.
+- Trace a dependency/version conflict: `./universal-build why <package>`.
+- Build and test; commit `package.json` and `pnpm-lock.yaml` together.
 
-### Updating Node Version
+#### Toolchain Changes
 
-* Follow the steps in the workflow "Adding A Toolchain Dependency", using `Node` as the package name
-* Update references to the node version in `package.json`
-* The `tsconfig.json` may need to be updated as well
+- Node and pnpm: `chosenNode` and `chosenPnpm` in `flake.nix`. Review `@types/node` and TypeScript configuration when upgrading Node.
+- Other CLI tools: the development shell's `packages` in `flake.nix`.
+- Nix package set: change `inputs.nixpkgs.url`, then run `./universal-build --update-nix-flake-lockfile`. Commit `flake.nix` and `flake.lock`.
 
-### Updating PNPM Version
+After toolchain changes, run the full build and refresh the IDE paths.
 
-* Do not update PNPM with the usual notice banner and update command
-* Follow the steps in the workflow "Adding A Toolchain Dependency", using `pnpm` as the package name
+### 4. IDE Setup
 
-&nbsp;
+---
 
-## 5. Output
+After installing dependencies, print the pinned toolchain paths:
 
-The Dockerfile runs `Main.js`.
+```sh
+./universal-build --print-node-and-tsdk-paths-for-ide
+```
 
-&nbsp;
+- [IntelliJ IDEA Ultimate setup](https://app.notion.com/p/f4c0a2b7875583b79fa5015d58412fea): use the printed Node/pnpm paths for JavaScript Runtime and the TypeScript SDK path for TypeScript. Enable Automatic ESLint.
+- [Visual Studio Code setup](https://app.notion.com/p/4fd0a2b787558204a6c001d0b034f698): set `js/ts.tsserver.node.path` and `js/ts.tsdk.path` to the printed Node and SDK paths; select **Use Workspace Version**.
 
-## 6. IDE Setup
+### 5. Concepts
 
-### IntelliJ IDEA Ultimate
+---
 
-Follow the instructions here: <https://nader-najjar.notion.site/JetBrains-IDE-Setup-Usage-Guide-d9b0a2b78755822f9d03819f5f02feb2?source=copy_link>
-    * Use the command `./universal-build --print-node-and-tsdk-paths-for-ide` to get the local nix installation of the node, pnpm, and TypeScript SDK paths specified in the flake
+- [Nix flakes](https://nix.dev/concepts/flakes)
+- [pnpm dependency management](https://pnpm.io/10.x/package_json)
 
-### Visual Studio Code
+### 6. Appendix
 
-Follow the instructions here: <https://nader-najjar.notion.site/Visual-Studio-Code-Setup-Usage-Guide-f4e0a2b7875583be9293817d26459034?source=copy_link>
-    * Use the command `./universal-build --print-node-and-tsdk-paths-for-ide` to get the local nix installation of the node/TypeScript version specified in the flake
+---
 
-&nbsp;
+#### Dependency Declarations
 
-## 7. References
+| `package.json` field | pnpm add flag | Use |
+| --- | --- | --- |
+| `dependencies` | Default | Runtime dependencies |
+| `devDependencies` | `-D` | Build, test, and editor tools |
+| `optionalDependencies` | `-O` | Dependencies whose installation may fail |
+| `peerDependencies` | `--save-peer` | Host-provided compatibility contract; also installs as a dev dependency |
 
-* [Build and OCI Image Packaging](https://app.notion.com/p/3f90a2b787558157a5c2cf7a9b7e92cc?pvs=204)
+`-E` saves an exact version instead of a range. See [pnpm add](https://pnpm.io/10.x/cli/add) for other dependency specifiers.
 
-### Nix
+### License
 
-* Installation: <https://nix.dev/install-nix>
-* Nix Versions: <https://status.nixos.org>
-* Nix Package Search: <https://search.nixos.org/packages>
-
-## License
+---
 
 All rights reserved. See [LICENSE](LICENSE).
